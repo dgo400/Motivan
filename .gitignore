@@ -1,0 +1,43 @@
+# Python build and cache files
+__pycache__/
+*.egg-info/
+build/
+dist/
+.venv/
+
+# Data and results: they belong on the server, not in git.
+# Keep result folders OUTSIDE this repository: these patterns are a safety net,
+# not a rule, since an output folder can be called anything.
+*.csv
+*.h5
+*.npy
+*.npz
+*.nc
+*.mp4
+*.pkl
+events.out.tfevents.*
+outputs/
+vame_project/
+runs/
+*.log
+!tests/data/*.csv
+
+# Secrets: read from the environment or ~/.config, never committed
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# OS / editor
+.DS_Store
+.vscode/
+
+# Local assistant instructions
+CLAUDE.md
+.claude/
+
+# Personal experiment files and examples: kept locally, not published
+/experiment.yaml
+/examples/
+/src/minitest.py

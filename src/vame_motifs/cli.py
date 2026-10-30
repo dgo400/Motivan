@@ -1,0 +1,243 @@
+"""Command-line entry point: ``vame-motifs <command> -c <experiment.yaml>``.
+
+This module only parses arguments, calls functions from the other modules,
+prints results and returns exit codes. The logic lives elsewhere so tests and
+notebooks can call it directly.
+
+Typical use::
+
+    vame-motifs validate -c experiment.yaml     # seconds: check the CSVs and the YAML
+    vame-motifs run      -c experiment.yaml     # everything: prepare, train, segment, export, communities, videos
+    vame-motifs gif      -c experiment.yaml --session rat01 --length 300
+
+Exit codes: 0 success, 1 a problem with the input or a missing step
+(short message, no traceback), 2 wrong command-line arguments.
+"""
+
+from __future__ import annotations
+
+import argparse
+import logging
+import sys
+from collections.abc import Callable
+
+from vame_motifs import __version__, evaluation
+from vame_motifs.config import ConfigError, ExperimentConfig, load_config
+from vame_motifs.export import ExportError, export_motifs, write_run_record
+from vame_motifs.io import PoseFileError
+from vame_motifs.pipeline import PipelineError, VamePipeline, describe_model_settings
+from vame_motifs.validation import validate
+
+logger = logging.getLogger("vame_motifs")
+
+# Expected problems: a short message is more useful than a traceback.
+USER_ERRORS = (ConfigError, PoseFileError, PipelineError, ExportError)
+
+
+# ======================================================================
+# Commands: each takes (cfg, args)
+# ======================================================================
+def cmd_validate(cfg: ExperimentConfig, args) -> None:
+    poses, reports = validate(cfg)
+    print(f"Body parts ({len(poses[0].bodyparts)}): {', '.join(poses[0].bodyparts)}")
+    print(f"Alignment : center={cfg.align_center}, direction={cfg.align_direction}")
+    if cfg.exclude:
+        print(f"Excluded  : {', '.join(cfg.exclude)}")
+    if cfg.videos:
+        print(f"Videos    : {len(cfg.videos)} file(s) for motif videos")
+    print()
+    for r in reports:
+        status = "OK" if not r.warnings else "WARNING"
+        print(f"{r.name:<45} {r.n_frames:>8} frames   {status}")
+        for w in r.warnings:
+            print(f"    - {w}")
+    print(f"\n{len(reports)} file(s) valid.")
+
+
+def cmd_init(cfg: ExperimentConfig, args) -> None:
+    VamePipeline(cfg).init()
+    print(f"VAME project ready at {cfg.output / cfg.project_name}")
+
+
+def cmd_prepare(cfg: ExperimentConfig, args) -> None:
+    VamePipeline(cfg).prepare()
+
+
+def cmd_train(cfg: ExperimentConfig, args) -> None:
+    pipeline = VamePipeline(cfg)
+    pipeline.train()
+    print_evaluation(pipeline)
+
+
+def cmd_train_more(cfg: ExperimentConfig, args) -> None:
+    pipeline = VamePipeline(cfg)
+    round_dir = pipeline.train_more(args.epochs)
+    print(f"Trained {args.epochs} more epochs. The previous round is in {round_dir}")
+    print("Run 'segment' (or 'run') again: the motifs of the old model were moved there too.")
+    print_evaluation(pipeline)
+
+
+def cmd_evaluate(cfg: ExperimentConfig, args) -> None:
+    pipeline = VamePipeline(cfg)
+    pipeline.evaluate()
+    print_evaluation(pipeline)
+
+
+def print_evaluation(pipeline: VamePipeline) -> None:
+    """The model's scores on unseen data and what they suggest (evaluation.py)."""
+    s = evaluation.scores(evaluation.load(pipeline.evaluation_path))
+    print("\nModel on unseen test data (variance explained; 1 = perfect):")
+    print(f"  reconstruction: {s.reconstruction:.2f}   (training data: {s.train_reconstruction:.2f})")
+    if s.prediction is not None:
+        print(f"  prediction    : {s.prediction:.2f}   (training data: {s.train_prediction:.2f})")
+    for item in evaluation.advice(s, pipeline.cfg.zdims):
+        print(f"{'OK' if item.level == 'ok' else 'Suggestion'}: {item.text}")
+
+
+def cmd_segment(cfg: ExperimentConfig, args) -> None:
+    VamePipeline(cfg).segment(overwrite=args.force)
+
+
+def cmd_export(cfg: ExperimentConfig, args) -> None:
+    written = export_motifs(cfg)
+    print(f"Wrote {len(written)} file(s) to {cfg.motifs_dir}")
+
+
+def cmd_communities(cfg: ExperimentConfig, args) -> None:
+    VamePipeline(cfg).community()
+    print(f"Wrote community groupings under {cfg.output / cfg.project_name / 'results' / 'community_cohort'}")
+
+
+def cmd_videos(cfg: ExperimentConfig, args) -> None:
+    VamePipeline(cfg).motif_videos()
+    print(f"Wrote motif videos (grouped by community) under {cfg.output / cfg.project_name / 'results'}")
+
+
+def cmd_umap(cfg: ExperimentConfig, args) -> None:
+    pipeline = VamePipeline(cfg)
+    if pipeline.has_umap() and not args.force:
+        print(f"Motif map already made: {pipeline.umap_path} (use --force to redo)")
+        return
+    print(f"Wrote the motif map to {pipeline.umap()}")
+
+
+def cmd_gif(cfg: ExperimentConfig, args) -> None:
+    path = VamePipeline(cfg).gif(session=args.session, algorithm=args.algorithm, start=args.start,
+                                 length=args.length, label=args.label, subtract_background=args.subtract_background)
+    print(f"Wrote {path}")
+
+
+def cmd_run(cfg: ExperimentConfig, args) -> None:
+    cmd_validate(cfg, args)  # fail in seconds, not after preprocessing
+    VamePipeline(cfg).run(force=args.force)
+    cmd_export(cfg, args)
+
+
+def cmd_status(cfg: ExperimentConfig, args) -> None:
+    pipeline = VamePipeline(cfg)
+    n_sessions = len(cfg.pose_files) * len(cfg.algorithms)
+
+    def mark(done: bool) -> str:
+        return "done" if done else "-"
+
+    print(f"Experiment : {cfg.yaml_path}")
+    print(f"Pose files : {len(cfg.pose_files)}")
+    print(f"Project    : {pipeline.project_path} [{'exists' if pipeline.project_path.exists() else 'not created'}]")
+    print(f"  prepare  : {mark(pipeline.trainset_path.exists())}")
+    print(f"  train    : {mark(pipeline.model_path.exists())}")
+    used = pipeline.used_model_settings()
+    if used is not None:
+        print(f"  settings : {describe_model_settings(used)}")
+        changes = pipeline.changed_model_settings(used)
+        if changes:
+            print(f"  WARNING  : the experiment file now differs ({'; '.join(changes)}): "
+                  "'run --force' retrains with the new settings; a new experiment name keeps this model")
+    print(f"  segment  : {n_sessions - len(pipeline.missing_labels())}/{n_sessions} label files (n_clusters={cfg.n_clusters})")
+    for algorithm in cfg.algorithms:
+        n_csv = len(list((cfg.motifs_dir / algorithm).glob("*_motifs.csv")))
+        print(f"  export   : {algorithm}: {n_csv}/{len(cfg.pose_files)} motif CSVs")
+    print(f"  community: {mark(pipeline.has_community())}")
+    if cfg.videos:
+        print(f"  videos   : {mark(pipeline.has_motif_videos())}")
+    print(f"  umap     : {mark(pipeline.has_umap())}")
+
+
+# name -> (function, help text, keeps a run record?)
+COMMANDS: dict[str, tuple[Callable, str, bool]] = {
+    "validate": (cmd_validate, "Check the pose CSVs and the YAML (seconds)", False),
+    "init":     (cmd_init,     "Create the VAME project from the pose CSVs", True),
+    "prepare":  (cmd_prepare,  "Clean, align and build the training set", True),
+    "train":    (cmd_train,    "Train and evaluate the VAME model (slow; GPU)", True),
+    "evaluate": (cmd_evaluate, "Score how well the model reconstructs and predicts unseen data (seconds)", True),
+    "train-more": (cmd_train_more, "Train the model --epochs more epochs (underfit); keeps the old one in history/", True),
+    "segment":  (cmd_segment,  "Assign a motif to every time window", True),
+    "export":   (cmd_export,   "Write motif CSVs + motif usage summary", False),
+    "communities": (cmd_communities, "Group motifs with similar transitions into communities", True),
+    "videos":   (cmd_videos,   "Cut a short .mp4 per motif, per session, from input.videos, grouped by community", True),
+    "umap":     (cmd_umap,     "Map the latent space in 2-D (UMAP), for the window's motif map", True),
+    "gif":      (cmd_gif,      "vame.gif: the animal next to its path through the UMAP, as a .gif", True),
+    "run":      (cmd_run,      "validate -> prepare -> train -> segment -> export -> communities -> videos", True),
+    "status":   (cmd_status,   "Show which steps are done", False),
+}
+
+
+# ======================================================================
+# Argument parsing
+# ======================================================================
+def build_parser() -> argparse.ArgumentParser:
+
+    parser = argparse.ArgumentParser(
+        prog="vame-motifs",
+        description="Behavioural motifs over time from DeepLabCut pose CSV files, using VAME.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="commands:\n" + "\n".join(f"  {name:<10} {help_text}" for name, (_, help_text, _) in COMMANDS.items()),
+    )
+
+    parser.add_argument("command", choices=COMMANDS, metavar="COMMAND", help="one of: " + ", ".join(COMMANDS))
+    parser.add_argument("-c", "--config", required=True, help="experiment YAML file")
+    parser.add_argument("--force", action="store_true",
+                        help="redo finished steps (run) / overwrite segmentation (segment) / redo the map (umap)")
+    parser.add_argument("--epochs", type=int, help="train-more: how many more epochs to train (required)")
+    gif = parser.add_argument_group("gif options")
+    gif.add_argument("--session", help="recording to show (default: the first)")
+    gif.add_argument("--algorithm", choices=["hmm", "kmeans"], help="segmentation to colour by (default: the first)")
+    gif.add_argument("--start", type=int, help="first time window (default: random, from the seed)")
+    gif.add_argument("--length", type=int, default=500, help="number of frames (default: 500)")
+    gif.add_argument("--label", choices=["motif", "community", "none"], default="community",
+                     help="colour the map by (default: community)")
+    gif.add_argument("--subtract-background", action="store_true", help="remove the static background from the frames")
+    parser.add_argument("-v", "--verbose", action="store_true", help="more detailed logging")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if args.command == "train-more" and args.epochs is None:
+        parser.error("train-more needs --epochs N: how many more epochs to train")  # exit code 2
+
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+
+    func, _, keeps_record = COMMANDS[args.command]
+    try:
+        cfg = load_config(args.config)
+        if keeps_record:
+            run_dir = write_run_record(cfg, args.command)
+            handler = logging.FileHandler(run_dir / "run.log")
+            handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+            logging.getLogger().addHandler(handler)
+            logger.info("Run record: %s", run_dir)
+        func(cfg, args)
+
+    except USER_ERRORS as e:
+        print(f"Error: {e}", file=sys.stderr)  # errors to stderr, results to stdout
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

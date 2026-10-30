@@ -1,0 +1,356 @@
+import numpy as np
+import pytest
+import yaml
+from conftest import write_video, write_yaml
+
+from vame_motifs.config import load_config
+from vame_motifs.pipeline import PipelineError, VamePipeline, evaluation_windows, symlinks_allowed
+
+
+def test_motif_videos_without_input_videos_says_so(experiment):
+    pipeline = VamePipeline(load_config(experiment))
+    with pytest.raises(PipelineError, match="No raw videos configured"):
+        pipeline.motif_videos()
+
+
+def test_motif_videos_without_labels_says_what_to_run(experiment):
+    videos = experiment.parent / "videos"
+    videos.mkdir()
+    write_video(videos / "rat01.mp4")
+    write_video(videos / "rat02.mp4")
+    write_yaml(experiment.parent, videos="videos/")
+
+    pipeline = VamePipeline(load_config(experiment))
+    with pytest.raises(PipelineError, match="Run 'segment' first"):
+        pipeline.motif_videos()
+
+
+def test_has_motif_videos_false_until_clips_exist(experiment):
+    cfg = load_config(experiment)
+    pipeline = VamePipeline(cfg)
+    assert not pipeline.has_motif_videos()
+
+    for pose_path in cfg.pose_files:
+        video_dir = pipeline.motif_videos_dir(pose_path.stem, "hmm")
+        video_dir.mkdir(parents=True)
+        (video_dir / f"{pose_path.stem}-motif_0.mp4").write_bytes(b"")
+    assert pipeline.has_motif_videos()
+
+
+def _write_community_bag(pipeline: VamePipeline, algorithm: str, bag: list[list[int]]) -> None:
+    bag_path = pipeline.community_bag_file(algorithm)
+    bag_path.parent.mkdir(parents=True)
+    np.save(bag_path, np.array(bag, dtype=object))
+
+
+def test_has_community_false_until_bag_exists(experiment):
+    cfg = load_config(experiment)
+    pipeline = VamePipeline(cfg)
+    assert not pipeline.has_community()
+
+    _write_community_bag(pipeline, "hmm", [[0, 1], [2, 3, 4]])
+    assert pipeline.has_community()
+
+
+def test_motif_to_community_maps_each_motif_to_its_bag_index(experiment):
+    pipeline = VamePipeline(load_config(experiment))
+    _write_community_bag(pipeline, "hmm", [[0, 2], [1, 3, 4]])
+
+    assert pipeline._motif_to_community("hmm") == {0: 0, 2: 0, 1: 1, 3: 1, 4: 1}
+
+
+def test_group_videos_by_community_moves_clips_into_community_subfolders(experiment):
+    cfg = load_config(experiment)
+    pipeline = VamePipeline(cfg)
+    _write_community_bag(pipeline, "hmm", [[0, 2], [1, 3, 4]])
+
+    for pose_path in cfg.pose_files:
+        video_dir = pipeline.motif_videos_dir(pose_path.stem, "hmm")
+        video_dir.mkdir(parents=True)
+        for motif in range(5):
+            (video_dir / f"{pose_path.stem}-motif_{motif}.mp4").write_bytes(b"")
+
+    pipeline._group_videos_by_community("hmm")
+
+    for pose_path in cfg.pose_files:
+        video_dir = pipeline.motif_videos_dir(pose_path.stem, "hmm")
+        assert not list(video_dir.glob("*.mp4"))  # nothing left flat at the top level
+        assert sorted(p.name for p in (video_dir / "community_0").glob("*.mp4")) == [
+            f"{pose_path.stem}-motif_0.mp4",
+            f"{pose_path.stem}-motif_2.mp4",
+        ]
+        assert sorted(p.name for p in (video_dir / "community_1").glob("*.mp4")) == [
+            f"{pose_path.stem}-motif_1.mp4",
+            f"{pose_path.stem}-motif_3.mp4",
+            f"{pose_path.stem}-motif_4.mp4",
+        ]
+
+
+def test_new_cut_moves_grouped_clips_to_their_new_community(experiment):
+    cfg = load_config(experiment)
+    pipeline = VamePipeline(cfg)
+    _write_community_bag(pipeline, "hmm", [[0, 2], [1, 3, 4]])
+    session = cfg.pose_files[0].stem
+    video_dir = pipeline.motif_videos_dir(session, "hmm")
+    video_dir.mkdir(parents=True)
+    for motif in range(5):
+        (video_dir / f"{session}-motif_{motif}.mp4").write_bytes(b"")
+    pipeline._group_videos_by_community("hmm")
+
+    pipeline.community_bag_file("hmm").unlink()
+    np.save(pipeline.community_bag_file("hmm"), np.array([[0, 1, 2, 3], [4]], dtype=object))
+    pipeline._group_videos_by_community("hmm")
+
+    assert sorted(p.name for p in video_dir.iterdir()) == ["community_0", "community_1"]
+    assert len(list((video_dir / "community_0").glob("*.mp4"))) == 4
+    assert {m: p.parent.name for m, p in pipeline.motif_clips(session, "hmm").items()}[4] == "community_1"
+
+
+def test_pose_matrix_orders_columns_x_y_confidence_per_keypoint():
+    import xarray as xr
+
+    from vame_motifs.pipeline import _pose_matrix
+
+    # Stored as VAME stores it: (time, space, keypoints, individuals).
+    position = np.array([[[10, 20], [11, 21]]], dtype=float)[..., None]  # x: 10, 20; y: 11, 21
+    confidence = np.array([[0.9, 0.8]])[..., None]
+    ds = xr.Dataset({"position": (("time", "space", "keypoints", "individuals"), position),
+                     "confidence": (("time", "keypoints", "individuals"), confidence)})
+
+    assert _pose_matrix(ds).tolist() == [[10, 11, 0.9, 20, 21, 0.8]]
+
+
+def test_gif_start_is_in_a_well_tracked_stretch(experiment):
+    pipeline = VamePipeline(load_config(experiment))  # min_confidence 0.9, time_window 30
+    confidence = np.full((1000, 2), 0.99)
+    confidence[:600 + 15, 0] = 0.1  # poorly tracked until window 600 (frame 615)
+
+    start = pipeline._well_tracked_start(confidence, num_points=900, length=100)
+
+    assert 595 <= start <= 800  # at least 95% of its frames well tracked
+
+
+def _write_project_config(pipeline: VamePipeline, sessions: list[str]) -> None:
+    config_path = pipeline.project_path / "config.yaml"
+    config_path.parent.mkdir(parents=True)
+    config_path.write_text("session_names:\n" + "".join(f"- {s}\n" for s in sessions))
+
+
+def test_project_with_other_recordings_is_refused_before_vame_runs(experiment):
+    cfg = load_config(experiment)  # rat01DLC_resnet50 and rat02DLC_resnet50
+    pipeline = VamePipeline(cfg)
+    _write_project_config(pipeline, ["rat01DLC_resnet50"])
+
+    with pytest.raises(PipelineError, match=r"made for 1 recording\(s\), but the experiment now has 2 "
+                                            r"\(new: rat02DLC_resnet50\).*give the experiment a new name"):
+        pipeline.init()
+
+
+def test_removed_recording_is_named(experiment):
+    pipeline = VamePipeline(load_config(experiment))
+    _write_project_config(pipeline, ["rat01DLC_resnet50", "rat02DLC_resnet50", "rat03DLC_resnet50"])
+
+    with pytest.raises(PipelineError, match="no longer in the pose files: rat03DLC_resnet50"):
+        pipeline._check_project_sessions()
+
+
+def test_same_recordings_or_no_project_pass(experiment):
+    pipeline = VamePipeline(load_config(experiment))
+    pipeline._check_project_sessions()  # no project yet
+
+    _write_project_config(pipeline, ["rat02DLC_resnet50", "rat01DLC_resnet50"])  # order does not matter
+    pipeline._check_project_sessions()
+
+
+def test_symlinks_allowed_is_false_when_links_fail(monkeypatch):
+    # Windows without Developer Mode raises OSError on every symlink
+    def refuse(self, target):
+        raise OSError("symbolic links not allowed")
+
+    monkeypatch.setattr("pathlib.Path.symlink_to", refuse)
+    assert symlinks_allowed() is False
+
+
+def _prepare_with(experiment, **yaml_overrides) -> None:
+    """Stand-in for a finished 'prepare': the settings file it leaves, without running VAME."""
+    write_yaml(experiment.parent, **yaml_overrides)
+    pipeline = VamePipeline(load_config(experiment))
+    pipeline.project_path.mkdir(parents=True)
+    pipeline._write_model_settings()
+
+
+def test_changed_model_settings_is_refused_before_vame_runs(experiment):
+    _prepare_with(experiment)  # exclude: []
+    write_yaml(experiment.parent, exclude="[left_ear]")
+    pipeline = VamePipeline(load_config(experiment))
+
+    with pytest.raises(PipelineError, match=r"other settings \(exclude: \[\] -> \['left_ear'\]\).*run --force"):
+        pipeline.init()
+
+
+def test_segmentation_settings_do_not_need_retraining(experiment):
+    pipeline = VamePipeline(load_config(experiment))
+    pipeline._check_model_settings()  # nothing prepared yet
+
+    _prepare_with(experiment, n_clusters=5)
+    write_yaml(experiment.parent, n_clusters=8, method="kmeans")
+    VamePipeline(load_config(experiment))._check_model_settings()
+
+
+def test_run_force_skips_the_settings_check(experiment, monkeypatch):
+    pipeline = VamePipeline(load_config(experiment))
+    calls = []
+    monkeypatch.setattr(pipeline, "init", lambda check_settings=True: calls.append(check_settings))
+    for step in ["prepare", "train", "segment"]:
+        monkeypatch.setattr(pipeline, step, lambda *args, **kwargs: None)
+
+    pipeline.run(force=True)
+    pipeline.run(force=False)
+    assert calls == [False, True]
+
+
+# --- train-more ---------------------------------------------------------
+def _trained_project(experiment) -> VamePipeline:
+    """A project as 'train' and 'segment' leave it, with placeholder files instead of VAME's."""
+    pipeline = VamePipeline(load_config(experiment))
+    model_dir = pipeline.project_path / "model"
+    for folder in ("best_model/snapshots", "model_losses", "evaluate"):
+        (model_dir / folder).mkdir(parents=True)
+    pipeline.model_path.write_bytes(b"old weights")
+    (model_dir / "model_losses" / "train_losses_VAME.npy").write_bytes(b"")
+    pipeline.label_file("rat01DLC_resnet50", "hmm").parent.mkdir(parents=True)
+    pipeline.label_file("rat01DLC_resnet50", "hmm").write_bytes(b"")
+    (pipeline.cfg.motifs_dir / "hmm").mkdir(parents=True)
+    pipeline._write_model_settings()
+    pipeline._config = {"project_path": str(pipeline.project_path)}  # as if init() had run
+    pipeline.evaluated = 0
+    def evaluate():  # needs a real model; counted instead
+        pipeline.evaluated += 1
+    pipeline.evaluate = evaluate
+    return pipeline
+
+
+class FakeVame:
+    """Records the config train_model gets and saves a 'model' as VAME would."""
+    def __init__(self, pipeline: VamePipeline, log_text: str = ""):
+        self.pipeline, self.log_text, self.train_config = pipeline, log_text, None
+
+    def train_model(self, config):
+        self.train_config = config
+        self.pipeline._log("train_model").parent.mkdir(exist_ok=True)
+        with open(self.pipeline._log("train_model"), "a") as fh:
+            fh.write(self.log_text)
+        self.pipeline.model_path.write_bytes(b"new weights")
+
+    def evaluate_model(self, config):
+        pass
+
+
+def test_train_more_starts_from_the_saved_weights(experiment, monkeypatch):
+    pipeline = _trained_project(experiment)
+    vame = FakeVame(pipeline)
+    monkeypatch.setattr("vame_motifs.pipeline._import_vame", lambda: vame)
+
+    pipeline.train_more(25)
+
+    assert vame.train_config["pretrained_weights"] is True
+    assert vame.train_config["pretrained_model"] == "VAME"
+    assert vame.train_config["max_epochs"] == 25
+    assert yaml.safe_load(pipeline.model_settings_path.read_text())["more_epochs"] == [25]
+    assert pipeline.evaluated == 1  # the new model is scored for the window
+
+
+def test_previous_round_is_kept_in_history(experiment, monkeypatch):
+    pipeline = _trained_project(experiment)
+    monkeypatch.setattr("vame_motifs.pipeline._import_vame", lambda: FakeVame(pipeline))
+
+    round_dir = pipeline.train_more(10)
+
+    assert round_dir == pipeline.project_path / "history" / "round_1"
+    assert (round_dir / "model" / pipeline.model_path.name).read_bytes() == b"old weights"
+    assert (round_dir / "model" / "model_losses" / "train_losses_VAME.npy").exists()
+    assert (round_dir / "results" / "rat01DLC_resnet50").is_dir()
+    assert (round_dir / "motifs" / "hmm").is_dir()
+    assert (round_dir / "model_settings.yaml").exists()
+    # what the new model has not made yet is gone; the folders VAME writes into are back, empty
+    assert not pipeline.label_file("rat01DLC_resnet50", "hmm").exists()
+    assert not pipeline.cfg.motifs_dir.exists()
+    assert sorted(p.name for p in (pipeline.project_path / "results").iterdir()) == [
+         "rat01DLC_resnet50", "rat02DLC_resnet50"]
+    assert not any((pipeline.project_path / "model" / "model_losses").iterdir())
+
+    assert pipeline.train_more(10) == pipeline.project_path / "history" / "round_2"
+
+
+def test_train_more_says_so_when_vame_could_not_load_the_weights(experiment, monkeypatch):
+    pipeline = _trained_project(experiment)
+    vame = FakeVame(pipeline, log_text="ERROR Could not load pretrained model. Check file path in config.yaml \n")
+    monkeypatch.setattr("vame_motifs.pipeline._import_vame", lambda: vame)
+
+    with pytest.raises(PipelineError, match=r"could not load the previous weights.*history.round_1"):
+        pipeline.train_more(10)
+
+
+def test_train_more_needs_a_model_and_some_epochs(experiment):
+    pipeline = VamePipeline(load_config(experiment))
+    with pytest.raises(PipelineError, match="Run 'train' first"):
+        pipeline.train_more(10)
+    with pytest.raises(PipelineError, match="at least 1"):
+        pipeline.train_more(0)
+
+
+# --- evaluate -----------------------------------------------------------
+def test_evaluation_windows_are_whole_windows_of_the_sequence():
+    sequence = np.arange(3 * 100).reshape(3, 100)  # features x frames: feature f, frame t -> 100 f + t
+    windows = evaluation_windows(sequence, time_window=10, steps=5, n=8, rng=np.random.default_rng(0))
+
+    assert windows.shape == (8, 15, 3) and windows.dtype == np.float32
+    for window in windows:
+        start = int(window[0, 0])
+        assert start + 2 * 10 <= 100  # room for a full training window, as VAME draws them
+        assert (window == sequence[:, start:start + 15].T).all()
+
+
+def test_evaluation_windows_need_enough_frames():
+    assert len(evaluation_windows(np.zeros((2, 25)), 10, 5, 100, np.random.default_rng(0))) == 5
+    with pytest.raises(PipelineError, match="too few"):
+        evaluation_windows(np.zeros((2, 20)), 10, 5, 8, np.random.default_rng(0))
+
+
+def test_evaluate_needs_a_model(experiment):
+    with pytest.raises(PipelineError, match="Run 'train' first"):
+        VamePipeline(load_config(experiment)).evaluate()
+
+
+# --- prepare ------------------------------------------------------------
+def test_prepare_does_not_keep_an_old_training_set(experiment, monkeypatch):
+    pipeline = VamePipeline(load_config(experiment))
+    pipeline._config = {}  # as if init() had run
+    train_dir = pipeline.trainset_path.parent
+    train_dir.mkdir(parents=True)
+    for name in ("train_seq.npy", "test_seq.npy", "seq_mean.npy", "seq_std.npy"):
+        (train_dir / name).write_bytes(b"old")
+
+    class SilentlyFailingVame:  # VAME logs some failures and returns normally
+        def preprocessing(self, **kwargs):
+            return None
+
+        def create_trainset(self, **kwargs):
+            pass
+
+    monkeypatch.setattr("vame_motifs.pipeline._import_vame", SilentlyFailingVame)
+    with pytest.raises(PipelineError, match="did not create the training set"):
+        pipeline.prepare()
+    assert not any(train_dir.iterdir())  # the old mean/std would have normalised the new data
+
+
+# --- model settings, as shown by 'status' and the window ------------------
+def test_model_settings_in_one_line():
+    from vame_motifs.pipeline import describe_model_settings
+
+    settings = {"exclude": ["tail", "ear"], "zdims": 10, "max_epochs": 100, "seed": 42, "more_epochs": [50, 25]}
+    assert describe_model_settings(settings) == "exclude=[tail, ear], zdims=10, max_epochs=100+50+25, seed=42"
+
+
+def test_no_model_settings_before_prepare(experiment):
+    assert VamePipeline(load_config(experiment)).used_model_settings() is None
