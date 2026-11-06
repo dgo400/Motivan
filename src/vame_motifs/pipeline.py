@@ -112,7 +112,7 @@ def symlinks_allowed() -> bool:
 
 
 def _import_vame():
-    # No display on the server: VAME's plots are saved to files, not shown.
+    # Commands run without a display: VAME's plots are saved to files, not shown.
     os.environ.setdefault("MPLBACKEND", "Agg")
     try:
         import vame
@@ -621,9 +621,9 @@ class VamePipeline:
     def _link_raw_video(self, session: str) -> Path:
         """Make sure VAME's data/raw/<session><suffix> opens: it is where VAME reads the frames.
 
-        VAME's init links it to input.videos. A project trained on the GPU server
-        and copied back keeps a link to the server's path, which does not open
-        here: it is pointed again at this computer's input.videos.
+        VAME's init links it to input.videos. A project moved or copied from
+        another computer keeps a link to that computer's path, which does not
+        open here: it is pointed again at this computer's input.videos.
         """
         video = self.cfg.videos[[p.stem for p in self.cfg.pose_files].index(session)]
         raw = self.project_path / "data" / "raw" / f"{session}{video.suffix.lower()}"

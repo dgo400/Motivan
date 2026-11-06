@@ -1,7 +1,7 @@
 import pytest
 from conftest import BODYPARTS, write_dlc_csv
 
-from vame_motifs.io import PoseFileError, count_frames, read_dlc_csv
+from vame_motifs.pose_io import PoseFileError, count_frames, read_dlc_csv
 
 
 def test_reads_bodyparts_in_order(tmp_path):

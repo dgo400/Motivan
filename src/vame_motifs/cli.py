@@ -24,7 +24,7 @@ from collections.abc import Callable
 from vame_motifs import __version__, evaluation
 from vame_motifs.config import ConfigError, ExperimentConfig, load_config
 from vame_motifs.export import ExportError, export_motifs, write_run_record
-from vame_motifs.io import PoseFileError
+from vame_motifs.pose_io import PoseFileError
 from vame_motifs.pipeline import PipelineError, VamePipeline, describe_model_settings
 from vame_motifs.validation import validate
 

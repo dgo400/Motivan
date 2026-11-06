@@ -30,7 +30,7 @@ import numpy as np
 import pandas as pd
 
 from vame_motifs.config import ExperimentConfig
-from vame_motifs.io import count_frames
+from vame_motifs.pose_io import count_frames
 from vame_motifs.pipeline import VamePipeline
 
 

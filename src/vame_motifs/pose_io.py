@@ -1,14 +1,7 @@
 """Reading DeepLabCut pose files.
 
 A single-animal DeepLabCut CSV has three header rows, which pandas reads as
-three-level column names (scorer, bodypart, coord)::
-
-    scorer,    DLC_resnet50_..., DLC_resnet50_..., DLC_resnet50_..., ...
-    bodyparts, snout,            snout,            snout,            ...
-    coords,    x,                y,                likelihood,       ...
-    0,         312.4,            201.7,            0.998,            ...
-
-The body part names come from that header, so neither DeepLabCut nor its
+three-level column names (scorer, bodypart, coord):The body part names come from that header, so neither DeepLabCut nor its
 project folder is needed.
 """
 
@@ -27,7 +20,7 @@ class PoseFileError(ValueError):
     """A pose file is missing, malformed, or not in the supported format."""
 
 
-@dataclass
+@dataclass 
 class PoseFile:
     path: Path
     data: pd.DataFrame
@@ -36,7 +29,7 @@ class PoseFile:
     @property
     def name(self) -> str:
         """Session name, as VAME will call it (the file name without .csv)."""
-        return self.path.stem
+        return self.path.stem 
 
     @property
     def n_frames(self) -> int:

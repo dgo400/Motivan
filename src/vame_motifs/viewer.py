@@ -15,7 +15,7 @@ Five tabs, all reading the experiment's files (nothing here runs VAME itself):
                       windows (from 'evaluate'), with suggestions (evaluation.py).
 
 Commands are run through the main window (App.run_command), so they behave as
-the buttons there: same run records, and on the GPU server when that is ticked.
+the buttons there: same run records.
 
 Videos are read with OpenCV and maps drawn with matplotlib, both installed
 with VAME.
@@ -43,7 +43,7 @@ from PIL import Image, ImageTk
 from vame_motifs import communities, evaluation
 from vame_motifs.config import ExperimentConfig, load_config
 from vame_motifs.export import ExportError, labels_to_frames
-from vame_motifs.io import count_frames
+from vame_motifs.pose_io import count_frames
 from vame_motifs.pipeline import VamePipeline, describe_model_settings
 
 if TYPE_CHECKING:

@@ -32,7 +32,7 @@ import pandas as pd
 
 from vame_motifs.config import ExperimentConfig
 from vame_motifs.export import motif_table
-from vame_motifs.io import count_frames
+from vame_motifs.pose_io import count_frames
 from vame_motifs.pipeline import VamePipeline
 
 ROOT = "Root"  # VAME's name for the tree's root

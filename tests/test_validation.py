@@ -2,7 +2,7 @@ import pytest
 from conftest import write_dlc_csv, write_video, write_yaml
 
 from vame_motifs.config import ConfigError, load_config
-from vame_motifs.io import PoseFileError
+from vame_motifs.pose_io import PoseFileError
 from vame_motifs.pipeline import vame_settings
 from vame_motifs.validation import validate
 

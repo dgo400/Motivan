@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from vame_motifs.config import ConfigError, ExperimentConfig
-from vame_motifs.io import PoseFile, PoseFileError, read_dlc_csv
+from vame_motifs.pose_io import PoseFile, PoseFileError, read_dlc_csv
 
 WARN_FRACTION = 0.2  # warn when more than 20 % of a body part's frames are below the threshold
 

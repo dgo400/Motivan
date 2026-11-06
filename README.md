@@ -46,9 +46,8 @@ takes several minutes. If something fails, the console stays open with the error
 | Use the commands in a terminal | Open *Anaconda Prompt*, then `conda activate vame` and `vame-motifs --help` |
 | Develop (editable install + pytest, ruff) | In a terminal in `motif-gui`: `install.bat dev` |
 
-On Windows, pip installs the CPU-only build of PyTorch. That is enough for the window,
-for every step except `train`, and for training on a GPU server (see *Training on a GPU server*
-below); training on the PC itself will be slow.
+On Windows, pip installs the CPU-only build of PyTorch. That is enough for the window and
+for every step except `train`; training on a PC without a GPU will be slow.
 
 ### On macOS, Linux or a server: by hand
 
@@ -219,7 +218,6 @@ Saving keeps the keys of the experiment file that the form does not show (such a
 | *Open output folder* | Opens the output folder in Finder / Explorer |
 | *Explore results…* | Opens the results window (below); *Watch the videos…* in the Data tab opens it on the videos |
 | *Clear* | Empties the output panel |
-| *On GPU server* | Runs the commands on the server set in the *GPU server* tab (see below) |
 
 **Explore results**
 
@@ -264,53 +262,7 @@ keep the old model.
 The window only runs `vame-motifs <command> -c experiment.yaml` for you, so results, run
 records and exit codes are identical to the terminal, and an `experiment.yaml` saved
 from the window can be used directly with the CLI (for example on the cluster).
-It needs a desktop: on a Slurm cluster, use the commands below, or run the window on your
-computer and train on the server, as follows.
-
-**Training on a GPU server (SSH)**
-
-Training is slow without a GPU. The window can run the commands on a server you can reach
-with SSH, while you keep working on your computer:
-
-1. Install vame-motifs on the server too (section 1), and note the path of that
-   environment's Python, e.g. `~/miniconda3/envs/vame/bin/python`.
-2. In the **GPU server** tab, fill in:
-
-   | Field | Example | |
-   |---|---|---|
-   | Server | `me@gpu.example.org` | or a `Host` name from `~/.ssh/config` |
-   | Port | | empty = 22 |
-   | Key file | `~/.ssh/id_ed25519` | empty = your default SSH key |
-   | Jump host | `me@login.example.org` | optional: a login node to go through (`ssh -J`) |
-   | Folder on server | `vame-motifs/exp1` | where the experiment goes; relative = in your home folder |
-   | Python on server | `~/miniconda3/envs/vame/bin/python` | the Python with vame-motifs installed |
-   | Run prefix | `srun --gres=gpu:1 -p gpu` | optional: on a Slurm cluster, to run on a GPU node |
-
-3. Click **Connect**. This opens one SSH connection (through the jump host, if set) and keeps
-   it open as a tunnel that every later step goes through, so a password or two-factor code
-   is asked only once, in a small window. With an SSH key and no password, connecting first
-   is optional.
-4. Tick **On GPU server** in the *Run* box and use the buttons as usual.
-
-Each command then runs in three steps, all shown in the output panel:
-
-- **upload**: the experiment file, and, with *Copy pose files and videos…* ticked, the pose
-  files and videos from your computer (only what changed, with `rsync`);
-- **run**: `vame-motifs <command> -c experiment.yaml` on the server, with its output streamed
-  live; *Stop* ends it on the server too;
-- **download**: the output folder, back to where your experiment file points, so *Open output
-  folder* shows the results (even after a failed command, for its run record).
-
-The pose files, videos and output folder can be anywhere on your computer. Those inside the
-experiment folder keep the same place in the server folder; those elsewhere are copied to
-`inputs/` in the server folder (and results come back from its `outputs/`), and the
-experiment file sent to the server points there. Your local experiment file is not changed.
-A path that does not exist on your computer (e.g. `/pool01/...`) is taken to be a path on the
-server and is not copied: point it at data already on the server to skip uploading it.
-The server settings are saved for your user in `~/.config/vame-motifs/gui.json`, not in the
-experiment file, and each experiment remembers its own folder on the server. This needs the
-`ssh` and `rsync` programs (included in macOS and Linux); *Connect* is not available on Windows,
-where an SSH key is needed instead.
+It needs a desktop: on a Slurm cluster, use the commands below.
 
 ### On a Slurm cluster (e.g. Pedraforca)
 
@@ -394,8 +346,6 @@ that produced it.
 src/vame_motifs/
 ├── cli.py          commands: parse arguments, call functions, print, exit codes
 ├── gui.py          window: edits the experiment YAML, runs the cli.py commands
-├── remote.py       the ssh/rsync command lines that run them on a GPU server
-├── askpass.py      the password window ssh uses when the window connects
 ├── config.py       load_config()   experiment YAML -> ExperimentConfig
 ├── io.py           read_dlc_csv()  DLC CSV -> PoseFile
 ├── validation.py   validate()      checks before any VAME step (uses config.py + io.py)
