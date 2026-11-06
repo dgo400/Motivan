@@ -120,6 +120,6 @@ def write_run_record(cfg: ExperimentConfig, command: str) -> Path:
         f"host: {socket.gethostname()}",
         f"platform: {platform.platform()}",
         f"python: {platform.python_version()}",
-    ] + [f"{pkg}: {_package_version(pkg)}" for pkg in ("vame-motifs", "vame-py", "torch", "numpy", "pandas")]
+    ] + [f"{pkg}: {_package_version(pkg)}" for pkg in ("Motivan", "vame-py", "torch", "numpy", "pandas")]
     (run_dir / "versions.txt").write_text("\n".join(lines) + "\n")
     return run_dir

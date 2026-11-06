@@ -3,7 +3,7 @@ requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "vame-motifs"
+name = "Motivan"
 dynamic = ["version"]
 description = "Behavioural motifs over time from DeepLabCut pose estimations CSV files, using VAME workflow."
 readme = "README.md"
@@ -21,10 +21,10 @@ dev = ["pytest", "ruff==0.16.10"]  # exact: each ruff release changes its defaul
 vame = ["vame-py==0.14.4"]  # exact: the wrapper is written against this VAME API
 
 [project.scripts]
-vame-motifs = "vame_motifs.cli:main"
+Motivan = "vame_motifs.cli:main"
 
 [project.gui-scripts]
-vame-motifs-gui = "vame_motifs.gui:main"
+Motivan-gui = "vame_motifs.gui:main"
 
 [tool.setuptools.dynamic]
 version = { attr = "vame_motifs.__version__" }

@@ -462,7 +462,7 @@ class Explorer(tk.Toplevel):
         self._select_recording(self.session)
 
     def _run(self, command: str, extra: list[str] | None = None) -> None:
-        """Run a vame-motifs command through the main window, then reload."""
+        """Run a Motivan command through the main window, then reload."""
         if self.app.running:
             messagebox.showinfo("Explore results", "A command is already running: wait for it to finish.", parent=self)
             return

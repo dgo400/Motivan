@@ -1,4 +1,4 @@
-"""Command-line entry point: ``vame-motifs <command> -c <experiment.yaml>``.
+"""Command-line entry point: ``Motivan <command> -c <experiment.yaml>``.
 
 This module only parses arguments, calls functions from the other modules,
 prints results and returns exit codes. The logic lives elsewhere so tests and
@@ -6,9 +6,9 @@ notebooks can call it directly.
 
 Typical use::
 
-    vame-motifs validate -c experiment.yaml     # seconds: check the CSVs and the YAML
-    vame-motifs run      -c experiment.yaml     # everything: prepare, train, segment, export, communities, videos
-    vame-motifs gif      -c experiment.yaml --session rat01 --length 300
+    Motivan validate -c experiment.yaml     # seconds: check the CSVs and the YAML
+    Motivan run      -c experiment.yaml     # everything: prepare, train, segment, export, communities, videos
+    Motivan gif      -c experiment.yaml --session rat01 --length 300
 
 Exit codes: 0 success, 1 a problem with the input or a missing step
 (short message, no traceback), 2 wrong command-line arguments.
@@ -187,7 +187,7 @@ COMMANDS: dict[str, tuple[Callable, str, bool]] = {
 def build_parser() -> argparse.ArgumentParser:
 
     parser = argparse.ArgumentParser(
-        prog="vame-motifs",
+        prog="Motivan",
         description="Behavioural motifs over time from DeepLabCut pose CSV files, using VAME.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="commands:\n" + "\n".join(f"  {name:<10} {help_text}" for name, (_, help_text, _) in COMMANDS.items()),

@@ -1,7 +1,7 @@
 # MOTIVAN
 
 We present MOTIVAN, an application for extracting behavioural motifs over time from DeepLabCut pose estimations, using [VAME](https://github.com/EthoML/VAME).
-The Python package and its commands are called `vame-motifs` (CLI) and `vame-motifs-gui` (window).
+The Python package and its commands are called `Motivan` (CLI) and `Motivan-gui` (window).
 
 **Input:** a folder of DeepLabCut `.csv` files (one per recording) and a short YAML file.
 **Output:** one `.csv` per recording with the motif of every frame, plus a motif-usage summary.
@@ -41,7 +41,7 @@ takes several minutes. If something fails, the console stays open with the error
 |---|---|
 | Open the window | Double-click the **VAME motifs** desktop shortcut, or `start-gui.bat` |
 | Update after new code (`git pull` or a new ZIP) | Double-click `install.bat` again: the environment is reused |
-| Use the commands in a terminal | Open *Anaconda Prompt*, then `conda activate vame` and `vame-motifs --help` |
+| Use the commands in a terminal | Open *Anaconda Prompt*, then `conda activate vame` and `Motivan --help` |
 | Develop (editable install + pytest, ruff) | In a terminal in `motif-gui`: `install.bat dev` |
 
 On Windows, pip installs the CPU-only build of PyTorch. That is enough for the window and
@@ -57,7 +57,7 @@ conda activate vame
 git clone <repo-url> motif-gui
 cd motif-gui
 python -m pip install .            # or: python -m pip install -e ".[dev]" to develop
-vame-motifs --help
+Motivan --help
 ```
 
 ## 2. Prepare your data
@@ -109,8 +109,8 @@ Don't know the body part names? Run `validate`: it lists them.
 ## 3. Run
 
 ```bash
-vame-motifs validate -c experiment.yaml   # check files + YAML, list body parts, warn on poor tracking
-vame-motifs run      -c experiment.yaml   # prepare -> train -> segment -> export
+Motivan validate -c experiment.yaml   # check files + YAML, list body parts, warn on poor tracking
+Motivan run      -c experiment.yaml   # prepare -> train -> segment -> export
 ```
 
 `run` skips steps that are already done, so it is safe to run again. The steps can also
@@ -135,16 +135,16 @@ be run one by one:
 
 **Changing settings later**
 
-- New `n_clusters` or `method`: just `vame-motifs run -c experiment.yaml` again. The model is
+- New `n_clusters` or `method`: just `Motivan run -c experiment.yaml` again. The model is
   reused; only segmentation and export run.
 - New `time_window`, `zdims`, `max_epochs`, `patience`, `min_confidence`, alignment or `exclude`:
-  the model must be retrained, so use `vame-motifs run -c experiment.yaml --force`.
+  the model must be retrained, so use `Motivan run -c experiment.yaml --force`.
   Without `--force`, every step stops with an error naming what changed, instead of
   using a model made with the old settings. To keep the old model, copy the experiment
   file and give the copy a new `project_name` and `output` folder (in the window:
   *Duplicate…*).
 - Model still improving when training stopped (underfit): train it further with
-  `vame-motifs train-more -c experiment.yaml --epochs 50`, then `run` again to segment
+  `Motivan train-more -c experiment.yaml --epochs 50`, then `run` again to segment
   with the new model. The settings must not have changed since `prepare`. The previous
   model, its loss curves and plots, and its motifs are kept in
   `vame_project/history/round_<k>/`.
@@ -162,8 +162,8 @@ that file). From a terminal:
 
 ```bash
 conda activate vame
-vame-motifs-gui                    # empty form
-vame-motifs-gui experiment.yaml    # or open an existing experiment file
+Motivan-gui                    # empty form
+Motivan-gui experiment.yaml    # or open an existing experiment file
 ```
 
 (`python -m vame_motifs.gui` works too.) The window uses Tkinter, which comes with
@@ -205,7 +205,7 @@ Saving keeps the keys of the experiment file that the form does not show (such a
 
 | Control | What it does |
 |---|---|
-| *Run all* | `vame-motifs run`: all steps, skipping those already done |
+| *Run all* | `Motivan run`: all steps, skipping those already done |
 | `validate` … `videos` | One step at a time, the same commands as in the table above |
 | `train-more` | Asks how many more epochs, then runs `train-more --epochs N`. Run `segment` (or *Run all*) afterwards |
 | *Duplicate…* | Saves the form as a new experiment: asks a name (e.g. `z10`) and a file, and gives the copy that name and its own output folder, next to this one's and named after it. The experiment you had open, and its model, stay as they are. To try other settings: *Duplicate…*, change them, *Run all* |
@@ -257,7 +257,7 @@ just *Run all* again; a change in the *Advanced* tab, alignment, exclusions or m
 confidence, tick *Force* and *Run all* (the model is retrained), or *Duplicate…* first to
 keep the old model.
 
-The window only runs `vame-motifs <command> -c experiment.yaml` for you, so results, run
+The window only runs `Motivan <command> -c experiment.yaml` for you, so results, run
 records and exit codes are identical to the terminal, and an `experiment.yaml` saved
 from the window can be used directly with the CLI (for example on the cluster).
 It needs a desktop: on a Slurm cluster, use the commands below.
@@ -267,7 +267,7 @@ It needs a desktop: on a Slurm cluster, use the commands below.
 Everything runs on the server; no GUI step is involved. Submit the slow command as a job:
 
 ```bash
-sbatch --gres=gpu:1 --wrap "conda run -n vame vame-motifs run -c /path/to/experiment.yaml"
+sbatch --gres=gpu:1 --wrap "conda run -n vame Motivan run -c /path/to/experiment.yaml"
 ```
 
 (Ask the admins for the right partition and GPU options.)

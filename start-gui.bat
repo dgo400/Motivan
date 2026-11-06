@@ -1,5 +1,5 @@
 @echo off
-rem Opens the vame-motifs window from the 'vame' conda environment, without activating it.
+rem Opens the Motivan window from the 'vame' conda environment, without activating it.
 rem Pass an experiment file to open it: start-gui.bat experiment.yaml
 setlocal
 
@@ -17,7 +17,7 @@ pause
 exit /b 1
 
 :conda_found
-set "PREFIX_FILE=%TEMP%\vame-motifs-prefix.txt"
+set "PREFIX_FILE=%TEMP%\Motivan-prefix.txt"
 "%CONDA_EXE%" run -n %ENV_NAME% python -c "import sys; print(sys.prefix)" > "%PREFIX_FILE%"
 set /p ENV_PREFIX=<"%PREFIX_FILE%"
 del "%PREFIX_FILE%" >nul 2>&1

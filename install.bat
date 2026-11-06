@@ -1,5 +1,5 @@
 @echo off
-rem Installs vame-motifs on Windows with a double click: finds conda, creates the
+rem Installs Motivan on Windows with a double click: finds conda, creates the
 rem 'vame' environment if needed, installs this folder into it and adds a desktop
 rem shortcut to the window. Run it again to update after pulling new code.
 rem   install.bat        normal install
@@ -12,7 +12,7 @@ set "SHORTCUT_NAME=VAME motifs"
 set "REPO_DIR=%~dp0"
 
 echo.
-echo === vame-motifs installer ===
+echo === Motivan installer ===
 echo.
 
 rem 1. find conda: the shell's own conda first, then the usual install folders
@@ -40,7 +40,7 @@ if errorlevel 1 goto fail
 
 :env_ready
 rem the environment's own python, so nothing needs 'conda activate'
-set "PREFIX_FILE=%TEMP%\vame-motifs-prefix.txt"
+set "PREFIX_FILE=%TEMP%\Motivan-prefix.txt"
 "%CONDA_EXE%" run -n %ENV_NAME% python -c "import sys; print(sys.prefix)" > "%PREFIX_FILE%"
 set /p ENV_PREFIX=<"%PREFIX_FILE%"
 del "%PREFIX_FILE%" >nul 2>&1
@@ -53,7 +53,7 @@ echo Environment: %ENV_PREFIX%
 
 rem 3. install this folder (pulls vame-py and torch the first time: can take a while)
 echo.
-echo Installing vame-motifs and its dependencies...
+echo Installing Motivan and its dependencies...
 pushd "%REPO_DIR%"
 "%ENV_PYTHON%" -m pip install --upgrade pip
 if /i "%~1"=="dev" (
@@ -81,7 +81,7 @@ if errorlevel 1 echo Warning: the shortcut could not be created; start the windo
 echo.
 echo === Done ===
 echo Open the window with the '%SHORTCUT_NAME%' icon on the desktop, or with start-gui.bat.
-echo From a terminal: conda activate %ENV_NAME% ^&^& vame-motifs --help
+echo From a terminal: conda activate %ENV_NAME% ^&^& Motivan --help
 echo.
 pause
 exit /b 0

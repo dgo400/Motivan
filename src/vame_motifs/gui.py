@@ -1,4 +1,4 @@
-"""Desktop window for vame-motifs: ``vame-motifs-gui`` (or ``python -m vame_motifs.gui``).
+"""Desktop window for Motivan: ``Motivan-gui`` (or ``python -m vame_motifs.gui``).
 
 The window adds nothing to the analysis. It does three things:
 
@@ -190,7 +190,7 @@ class App(ttk.Frame):
         self.on_done = None                            # called with the exit code when the command ends
         self.explorer = None                           # the 'Explore results' window, when open
 
-        root.title("vame-motifs")
+        root.title("Motivan")
         root.minsize(980, 680)
         root.protocol("WM_DELETE_WINDOW", self.on_close)
         self.grid(sticky="nsew")
@@ -466,7 +466,7 @@ class App(ttk.Frame):
 
     def _update_title(self) -> None:
         name = self.yaml_path.name if self.yaml_path else "untitled"
-        self.root.title(f"vame-motifs {__version__} — {name}{' *' if self.dirty else ''}")
+        self.root.title(f"Motivan {__version__} — {name}{' *' if self.dirty else ''}")
         self.path_label.configure(text=str(self.yaml_path) if self.yaml_path else "(not saved)",
                                   foreground="" if self.yaml_path else "gray")
 
@@ -577,7 +577,7 @@ class App(ttk.Frame):
     # Running commands
     # ==================================================================
     def run_command(self, command: str, extra: list[str] | None = None, on_done=None) -> None:
-        """Run a vame-motifs command on the experiment. ``extra``: more command-line arguments;
+        """Run a Motivan command on the experiment. ``extra``: more command-line arguments;
         ``on_done(exit code)`` is called when it ends (the Explorer reloads its results)."""
         if self.running:
             return
@@ -625,7 +625,7 @@ class App(ttk.Frame):
 
     def _run_process(self, args: list[str], cwd: Path) -> None:
         """Background thread: run the command, forwarding its output to the window (Tk is not thread-safe)."""
-        self.output_queue.put(("info", f"\n$ vame-motifs {' '.join(args[3:])}\n"))
+        self.output_queue.put(("info", f"\n$ Motivan {' '.join(args[3:])}\n"))
         env = dict(os.environ, PYTHONUNBUFFERED="1")  # stream output as it is printed
         try:
             process = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
@@ -745,7 +745,7 @@ class App(ttk.Frame):
 
 
 def main(argv: list[str] | None = None) -> int:
-    """``vame-motifs-gui [experiment.yaml]``"""
+    """``Motivan-gui [experiment.yaml]``"""
     argv = sys.argv[1:] if argv is None else argv
     root = tk.Tk()
     App(root, Path(argv[0]) if argv else None)
