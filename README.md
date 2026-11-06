@@ -1,14 +1,12 @@
-# motif-gui
+# MOTIVAN
 
-Behavioural motifs over time from DeepLabCut pose estimations, using [VAME](https://github.com/EthoML/VAME).
+We present MOTIVAN, an application for extracting behavioural motifs over time from DeepLabCut pose estimations, using [VAME](https://github.com/EthoML/VAME).
 The Python package and its commands are called `vame-motifs` (CLI) and `vame-motifs-gui` (window).
 
 **Input:** a folder of DeepLabCut `.csv` files (one per recording) and a short YAML file.
 **Output:** one `.csv` per recording with the motif of every frame, plus a motif-usage summary.
 
-No DeepLabCut installation or DeepLabCut project is needed: body part names are read
-from the CSV header. Raw videos are optional, and only needed for `videos`, the step
-that cuts short example clips of each motif.
+No DeepLabCut installation or DeepLabCut project is needed: just the CSV file, as body part names are read from the CSV header. Raw videos are optional, and only needed for `videos`, the step that cuts short example clips of each motif.
 
 Future steps: multi-animal analysis
 
