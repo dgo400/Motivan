@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- Use the device's real width (phones, tablets) instead of a zoomed-out desktop page -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Motivan</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- defer: run app.js once the whole page below has been read, so it can find every element -->
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header>
+    <h1>Motivan</h1>
+    <p>Behavioural motifs from DeepLabCut pose files, using VAME.</p>
+  </header>
+
+  <main>
+    <!-- ============================================================
+         1. Data: upload the files. This creates a job.
+         ============================================================ -->
+    <section id="upload-section">
+      <h2>1. Data</h2>
+      <p>
+        Choose the folder with the DeepLabCut <code>.csv</code> files (one per recording),
+        or pick the files one by one. Other files in the folder are left out.
+      </p>
+      <form id="upload-form">
+        <label>
+          Folder
+          <!-- webkitdirectory: the browser asks for a folder and gives every file inside it -->
+          <input type="file" id="folder-input" webkitdirectory>
+        </label>
+        <label>
+          or files
+          <input type="file" id="files-input" multiple accept=".csv,.mp4,.avi">
+        </label>
+        <label class="inline">
+          <input type="checkbox" id="include-videos">
+          Also upload the raw videos (<code>.mp4</code>, <code>.avi</code>): only needed for the motif clips,
+          and they can take long to upload
+        </label>
+        <button type="submit">Upload</button>
+      </form>
+      <p id="upload-message" class="message"></p>
+    </section>
+
+    <!-- ============================================================
+         2. Settings: hidden until there are files ("hidden" attribute).
+         The "name" of each input is the name of the setting in the API.
+         ============================================================ -->
+    <section id="settings-section" hidden>
+      <h2>2. Settings</h2>
+      <form id="settings-form">
+        <fieldset>
+          <legend>Recordings</legend>
+          <label>Frame rate (fps) <input type="number" name="fps" step="any" min="0" value="30" required></label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Body parts</legend>
+          <label>Align center <select name="align_center" required></select></label>
+          <label>Align direction <select name="align_direction" required></select></label>
+          <p>Exclude (body parts to leave out):</p>
+          <div id="exclude-list" class="checkbox-list"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Motifs</legend>
+          <label>Number of motifs <input type="number" name="n_clusters" min="2" required></label>
+          <label>Method <select name="method"></select></label>
+          <label>Minimum DLC confidence <input type="number" name="min_confidence" step="0.05" min="0" max="1"></label>
+        </fieldset>
+
+        <!-- <details>: a block that opens and closes with a click; closed by default -->
+        <details>
+          <summary>Advanced (the defaults are fine for most experiments)</summary>
+          <fieldset>
+            <label>Max. epochs <input type="number" name="max_epochs" min="10"></label>
+            <label>Patience <input type="number" name="patience" min="1"></label>
+            <label>Time window <input type="number" name="time_window" min="2"></label>
+            <label>Latent dimensions (zdims) <input type="number" name="zdims" min="1"></label>
+            <label>Seed <input type="number" name="seed"></label>
+            <label>Community cut tree <input type="number" name="community_cut_tree" min="0"></label>
+          </fieldset>
+        </details>
+
+        <button type="submit">Run the analysis</button>
+      </form>
+      <p id="settings-message" class="message"></p>
+    </section>
+
+    <!-- ============================================================
+         3. Progress and results of the current job
+         ============================================================ -->
+    <section id="job-section" hidden>
+      <h2>3. Progress</h2>
+      <p>
+        Job <code id="job-id"></code>:
+        <strong id="job-status"></strong>
+        <span id="job-step"></span>
+      </p>
+      <p id="job-message" class="message"></p>
+      <p id="job-error" class="message error"></p>
+
+      <div id="job-results" hidden>
+        <a id="download-link" class="button" href="#">Download the motif CSVs (.zip)</a>
+        <details>
+          <summary>All output files</summary>
+          <ul id="outputs-list"></ul>
+        </details>
+      </div>
+
+      <details open>
+        <summary>Log</summary>
+        <pre id="job-log"></pre>
+      </details>
+    </section>
+
+    <!-- ============================================================
+         All jobs: to come back to one later, or delete it
+         ============================================================ -->
+    <section id="jobs-section">
+      <h2>Jobs</h2>
+      <button type="button" id="refresh-jobs">Refresh</button>
+      <table>
+        <thead>
+          <tr><th>Job</th><th>Status</th><th>Step</th><th>Created</th><th></th></tr>
+        </thead>
+        <tbody id="jobs-table"></tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>

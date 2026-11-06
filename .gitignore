@@ -17,6 +17,7 @@ dist/
 *.pkl
 events.out.tfevents.*
 outputs/
+jobs/
 vame_project/
 runs/
 *.log

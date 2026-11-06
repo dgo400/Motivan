@@ -1,25 +1,22 @@
 """Communities: groups of motifs, cut from VAME's motif tree, and the user's names for them.
 
-VAME's ``community`` step builds a tree of the motifs (motifs that often follow
-each other are merged first) and cuts it at an integer depth, ``cut_tree``:
+VAME's community step builds a tree of the motifs (motifs that often follow
+each other are merged first) and cuts it at an integer depth, cut_tree:
 every node at that depth becomes one community holding the motifs below it.
-VAME saves the tree it built (``tree.graphml``), so any cut can be previewed
-here without VAME, in milliseconds, before running ``communities`` with it.
+VAME saves the tree it built (tree.graphml), so any cut can be previewed
+here without VAME, in milliseconds, before running communities with it.
 
     load_tree(path)            tree.graphml -> networkx tree
     cut_tree(tree, cutline)    the communities VAME would make at that cut
     tree_layout(tree)          node positions for drawing the tree
 
-Researchers' names for communities are kept next to the motif CSVs::
+Researchers' names for communities are kept next to the motif CSVs:
 
     <output>/motifs/<algorithm>/community_labels.csv               community, label, motifs
     <output>/motifs/<algorithm>/<session>_motifs_labeled.csv       frame, time_s, motif, community, label
 
 Names are stored with the community's motifs, so they stay attached to the
 right group when a new cut renumbers the communities.
-
-Only numpy, pandas and networkx are needed (all installed with VAME), so the
-window can use this module without loading VAME.
 """
 
 from __future__ import annotations
@@ -88,10 +85,10 @@ def leaf_order(tree: nx.Graph) -> list[int]:
 
 
 def cut_tree(tree: nx.Graph, cutline: int) -> list[list[int]]:
-    """The communities ``vame.community(cut_tree=cutline)`` makes from this tree.
+    """The communities vame.community(cut_tree=cutline) makes from this tree.
 
     Same rule as VAME (bag_nodes_by_cutline): each motif goes to its ancestor at
-    depth ``cutline``; a motif shallower than that is a community on its own.
+    depth cutline; a motif shallower than that is a community on its own.
     Same order too (sort_communities_by_position): communities and the motifs in
     them from left to right.
     """
@@ -137,7 +134,7 @@ def _motif_key(motifs) -> str:
 
 
 def read_labels(cfg: ExperimentConfig, algorithm: str, bag) -> dict[int, str]:
-    """Saved names for the communities in ``bag`` (community index -> name).
+    """Saved names for the communities in bag (community index -> name).
 
     Matched by the community's motifs, not its number: a name saved for
     motifs [4, 8, 10] is only given back to a community with exactly those.

@@ -86,6 +86,12 @@ def read_dlc_csv(path: str | Path) -> PoseFile:
     return PoseFile(path=path, data=data, bodyparts=bodyparts)
 
 
+def read_bodyparts(path: str | Path) -> list[str]:
+    """Body part names from a DLC CSV header, in order (only the header rows are read: fast)."""
+    columns = pd.read_csv(path, header=[0, 1, 2], index_col=0, nrows=0).columns
+    return list(dict.fromkeys(columns.get_level_values(1)))
+
+
 def count_frames(path: str | Path) -> int:
     """Number of frames in a DLC CSV, without parsing it (rows minus the 3 header rows)."""
     with open(path, "rb") as fh:

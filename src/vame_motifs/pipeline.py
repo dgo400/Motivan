@@ -24,6 +24,7 @@ import logging
 import os
 import shutil
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
@@ -744,25 +745,37 @@ class VamePipeline:
         return out
 
     # --- all steps ------------------------------------------------------
-    def run(self, force: bool = False) -> None:
+    def run(self, force: bool = False, progress: Callable[[str], None] | None = None) -> None:
         """init -> prepare -> train -> segment -> videos, skipping finished steps unless force=True.
 
         Segmentation always runs: VAME itself skips results that already exist
         for the current n_clusters, so a new n_clusters is segmented without
         retraining. Motif videos (and the community grouping they need) only
         run when input.videos was set.
+
+        ``progress``, if given, is called with each step's name before the step
+        starts (the web app uses it to show which step a job is on).
         """
+        def report(step: str) -> None:
+            if progress is not None:
+                progress(step)
+
+        report("init")
         self.init(check_settings=not force)
+        report("prepare")
         if force or not self.trainset_path.exists():
             self.prepare()
         else:
             logger.info("prepare: already done, skipping (use --force to redo)")
+        report("train")
         if force or not self.model_path.exists():
             self.train()
         else:
             logger.info("train: already done, skipping (use --force to retrain)")
+        report("segment")
         self.segment(overwrite=force)
         if self.cfg.videos:
+            report("videos")
             if force or not self.has_motif_videos():
                 self.motif_videos()
             else:

@@ -11,6 +11,8 @@ works from any folder.
 
 from __future__ import annotations
 
+import os
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -252,3 +254,20 @@ def load_config(path: str | Path) -> ExperimentConfig:
     if cfg.zdims < 1:
         raise ConfigError("zdims must be at least 1")
     return cfg
+
+
+def write_yaml(path: str | Path, data: dict) -> None:
+    """Write data as the experiment YAML at path, through a temporary file,
+    so a failed write never leaves half a file."""
+    path = Path(path)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile("w", dir=path.parent, prefix=f".{path.name}.", suffix=".tmp",
+                                         delete=False) as fh:
+            temporary = Path(fh.name)
+            yaml.safe_dump(data, fh, sort_keys=False, default_flow_style=False)
+        os.replace(temporary, path)  # atomic: readers see the old file or the new one, never half
+    except BaseException:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+        raise

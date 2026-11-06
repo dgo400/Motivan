@@ -1,0 +1,175 @@
+/* The look of the page. Each block: "selector { property: value; }".
+   The selector says which elements: "body" = the <body> tag, ".message" = elements
+   with class="message", "#job-log" = the element with id="job-log". */
+
+/* Colours used in several places, defined once ("CSS variables") */
+:root {
+  --accent: #2563eb;
+  --accent-dark: #1d4ed8;
+  --border: #d1d5db;
+  --muted: #6b7280;
+  --error: #b91c1c;
+  --ok: #15803d;
+  --background: #f9fafb;
+}
+
+body {
+  font-family: system-ui, sans-serif;  /* the operating system's own font */
+  line-height: 1.5;
+  color: #111827;
+  background: var(--background);
+  margin: 0;
+}
+
+header {
+  background: white;
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 2rem;
+}
+
+header h1 {
+  margin: 0;
+  color: var(--accent);
+}
+
+header p {
+  margin: 0;
+  color: var(--muted);
+}
+
+main {
+  max-width: 900px;  /* not too wide on big screens: easier to read */
+  margin: 0 auto;    /* "auto" left and right: centred */
+  padding: 1rem 2rem;
+}
+
+section {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+h2 {
+  margin-top: 0;
+}
+
+/* Each label on its own line, with its input after the text */
+label {
+  display: block;
+  margin: 0.5rem 0;
+}
+
+label input,
+label select {
+  margin-left: 0.5rem;
+}
+
+label.inline input {
+  margin: 0 0.5rem 0 0;
+}
+
+fieldset {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 1rem 0;
+}
+
+legend {
+  font-weight: 600;
+}
+
+input[type="number"] {
+  width: 6rem;
+}
+
+.checkbox-list label {
+  display: inline-block;  /* the body part checkboxes side by side */
+  margin-right: 1rem;
+}
+
+button,
+.button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  cursor: pointer;
+  text-decoration: none;  /* .button is also used on a link: no underline */
+  display: inline-block;
+}
+
+button:hover,
+.button:hover {
+  background: var(--accent-dark);
+}
+
+button:disabled {
+  background: var(--muted);
+  cursor: wait;
+}
+
+button.small {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.85rem;
+  margin-right: 0.3rem;
+}
+
+button.danger {
+  background: var(--error);
+}
+
+/* Messages under the forms: "pre-line" keeps the line breaks of multi-line messages */
+.message {
+  white-space: pre-line;
+}
+
+.error {
+  color: var(--error);
+}
+
+.ok {
+  color: var(--ok);
+}
+
+/* The log: fixed-width font, scrolls inside its box instead of making the page endless */
+#job-log {
+  background: #111827;
+  color: #e5e7eb;
+  padding: 0.75rem;
+  border-radius: 6px;
+  max-height: 300px;
+  overflow: auto;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.75rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Status words in colour: class="status-finished", "status-failed", ... (set by app.js) */
+.status-finished {
+  color: var(--ok);
+}
+
+.status-failed {
+  color: var(--error);
+}
+
+.status-running,
+.status-queued {
+  color: var(--accent);
+}

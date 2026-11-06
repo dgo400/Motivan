@@ -1,7 +1,7 @@
 # MOTIVAN
 
 We present MOTIVAN, an application for extracting behavioural motifs over time from DeepLabCut pose estimations, using [VAME](https://github.com/EthoML/VAME).
-The Python package and its commands are called `Motivan` (CLI) and `Motivan-gui` (window).
+The command is called `Motivan` (CLI). A web interface is in progress.
 
 **Input:** a folder of DeepLabCut `.csv` files (one per recording) and a short YAML file.
 **Output:** one `.csv` per recording with the motif of every frame, plus a motif-usage summary.
@@ -28,24 +28,23 @@ if present, then Apple MPS, then CPU.
 
 1. Install [Miniconda](https://www.anaconda.com/download/success) if you don't have conda yet
    (Anaconda or Miniforge work too).
-2. Get this repository: `git clone <repo-url> motif-gui`, or on GitHub *Code → Download ZIP*
+2. Get this repository: `git clone <repo-url> Motivan`, or on GitHub *Code → Download ZIP*
    and unzip it.
-3. Double-click **`install.bat`** in the `motif-gui` folder.
+3. Double-click **`install.bat`** in the `Motivan` folder.
 
 The installer finds conda, creates the `vame` environment with Python 3.12 (only if it
-does not exist yet), installs the package into it and puts a **VAME motifs** shortcut on
-the desktop that opens the window. The first install downloads VAME and PyTorch, so it
-takes several minutes. If something fails, the console stays open with the error.
+does not exist yet) and installs the package into it. The first install downloads VAME
+and PyTorch, so it takes several minutes. If something fails, the console stays open with
+the error.
 
 | To… | Do this |
 |---|---|
-| Open the window | Double-click the **VAME motifs** desktop shortcut, or `start-gui.bat` |
 | Update after new code (`git pull` or a new ZIP) | Double-click `install.bat` again: the environment is reused |
 | Use the commands in a terminal | Open *Anaconda Prompt*, then `conda activate vame` and `Motivan --help` |
-| Develop (editable install + pytest, ruff) | In a terminal in `motif-gui`: `install.bat dev` |
+| Develop (editable install + pytest, ruff) | In a terminal in `Motivan`: `install.bat dev` |
 
-On Windows, pip installs the CPU-only build of PyTorch. That is enough for the window and
-for every step except `train`; training on a PC without a GPU will be slow.
+On Windows, pip installs the CPU-only build of PyTorch. That is enough for every step
+except `train`; training on a PC without a GPU will be slow.
 
 ### On macOS, Linux or a server: by hand
 
@@ -54,8 +53,8 @@ Python 3.12 or newer. Use a dedicated environment (not conda's `base`):
 ```bash
 conda create -n vame python=3.12
 conda activate vame
-git clone <repo-url> motif-gui
-cd motif-gui
+git clone <repo-url> Motivan
+cd Motivan
 python -m pip install .            # or: python -m pip install -e ".[dev]" to develop
 Motivan --help
 ```
@@ -77,7 +76,7 @@ Motivan --help
   labeled video (`..._labeled.mp4`) sits next to the raw one, the raw one is used.
 
 - **Experiment file:** save the example below as `experiment.yaml` next to your
-  data and edit it (or let the window write it for you). Paths in it are relative
+  data and edit it. Paths in it are relative
   to the YAML file.
 
 ```yaml
@@ -128,7 +127,7 @@ be run one by one:
 | `export`  | Writes the motif CSVs and the usage summary | seconds |
 | `communities` | Groups motifs into communities by cutting VAME's motif tree at `advanced.community_cut_tree` | seconds |
 | `videos`  | Cuts a short `.mp4` per motif per recording, from `input.videos` (needs `input.videos`), in one folder per community | minutes |
-| `umap`    | 2-D map (UMAP) of the latent space, for the window's *Explore results* (`--force` redoes it) | about a minute |
+| `umap`    | 2-D map (UMAP) of the latent space (`--force` redoes it) | about a minute |
 | `gif`     | `vame.gif`: the animal next to its path through the UMAP, as a `.gif` (needs `input.videos`) | under a minute |
 | `status`  | Shows which steps are done, and the settings the model in the folder was made with (warns if the experiment file now differs) | instant |
 | `run`     | `validate` then all of the above (`--force` redoes every step); `videos` only runs if `input.videos` is set | |
@@ -141,8 +140,7 @@ be run one by one:
   the model must be retrained, so use `Motivan run -c experiment.yaml --force`.
   Without `--force`, every step stops with an error naming what changed, instead of
   using a model made with the old settings. To keep the old model, copy the experiment
-  file and give the copy a new `project_name` and `output` folder (in the window:
-  *Duplicate…*).
+  file and give the copy a new `project_name` and `output` folder.
 - Model still improving when training stopped (underfit): train it further with
   `Motivan train-more -c experiment.yaml --epochs 50`, then `run` again to segment
   with the new model. The settings must not have changed since `prepare`. The previous
@@ -153,118 +151,9 @@ Exit codes: `0` success, `1` a problem with the input or a missing step (printed
 `Error:` line, no traceback), `2` wrong command-line arguments. This makes the
 command safe to use in scripts and Slurm jobs.
 
-### With the window (GUI)
-
-Everything above can also be done from a window, without the terminal or editing YAML by hand.
-It is installed with the package. On Windows, after `install.bat`, open it with the
-**VAME motifs** desktop shortcut or `start-gui.bat` (`start-gui.bat experiment.yaml` opens
-that file). From a terminal:
-
-```bash
-conda activate vame
-Motivan-gui                    # empty form
-Motivan-gui experiment.yaml    # or open an existing experiment file
-```
-
-(`python -m vame_motifs.gui` works too.) The window uses Tkinter, which comes with
-conda's Python; with a Homebrew Python on macOS you may need `brew install python-tk`.
-
-The window has three parts: the experiment form (left), the commands (right) and their
-output (bottom). The bar at the top shows which experiment file is open, with *New*,
-*Open…*, *Save*, *Save as…* and *Duplicate…*. A `*` in the title means there are unsaved changes.
-
-**Step by step**
-
-1. **Choose where the experiment file lives.** Click *Save as…* and save
-   `experiment.yaml` next to your data (or *Open…* an existing one). Do this first:
-   the paths you pick are stored relative to this file.
-2. **Data tab.** With *File…* or *Folder…*, choose the pose files (a folder of
-   DeepLabCut `.csv` files, or one file) and, optionally, the raw videos (only needed
-   for the `videos` step). Set the frame rate and the output folder.
-3. **Body parts tab.** Click *Read body parts from pose files*: the names are read from
-   the first CSV's header. Pick *Align center* and *Align direction* from the lists, and
-   select in *Exclude* any body parts to leave out (click to select or unselect).
-4. **Motifs tab.** Set the number of motifs, the method (`hmm`, `kmeans` or `both`) and
-   the minimum DLC confidence.
-5. **Advanced tab.** Optional; the defaults are the same as in the YAML above. Leave
-   them as they are unless you know you need to change them. *Experiment name*
-   (`project_name`) names the experiment's folder in the output folder, e.g. `z30`.
-6. **Check the data.** Click `validate`. The output panel lists the body parts and warns
-   about poorly tracked ones. Fix any `Error:` line (shown in red) before going on.
-7. **Run.** Click *Run all*. It runs every step in order and skips steps already done.
-   Training is slow: the window stays usable, and the status line at the bottom says
-   which command is running. *Stop* ends it.
-8. **Look at the results.** When the output panel shows `[Finished]`, click
-   *Open output folder* (see [4. Outputs](#4-outputs)). *Status* shows which steps are done.
-
-The form is saved automatically before each command, so what runs is always what you see.
-Saving keeps the keys of the experiment file that the form does not show (such as
-`project_name`); comments in the file are not kept.
-
-**Buttons and options**
-
-| Control | What it does |
-|---|---|
-| *Run all* | `Motivan run`: all steps, skipping those already done |
-| `validate` … `videos` | One step at a time, the same commands as in the table above |
-| `train-more` | Asks how many more epochs, then runs `train-more --epochs N`. Run `segment` (or *Run all*) afterwards |
-| *Duplicate…* | Saves the form as a new experiment: asks a name (e.g. `z10`) and a file, and gives the copy that name and its own output folder, next to this one's and named after it. The experiment you had open, and its model, stay as they are. To try other settings: *Duplicate…*, change them, *Run all* |
-| *Status* | Which steps are done, and the settings of the model in the folder |
-| *Force (redo steps)* | Adds `--force` to *Run all* and `segment`: redo the steps instead of skipping them |
-| *Verbose* | Adds `-v`: more detailed output |
-| *Stop* | Ends the running command (asks first) |
-| *Open output folder* | Opens the output folder in Finder / Explorer |
-| *Explore results…* | Opens the results window (below); *Watch the videos…* in the Data tab opens it on the videos |
-| *Clear* | Empties the output panel |
-
-**Explore results**
-
-*Explore results…* opens a second window to look at what went in and what came out,
-and to act on it. *Segmentation* (top) picks `hmm` or `kmeans` when the method is `both`.
-
-*Recording* (top) picks the recording every tab shows; the line below it names its pose
-file and video. Recordings are named by the last digits of their video's name (the part
-before `DLC`), e.g. `01022023_001_16236-62755DLC_Resnet50_...` is shown as `62755`; if two
-recordings would get the same digits, they keep their full names. *Rename…* gives the
-selected recording another name (empty: back to the digits); names are saved in
-`<output>/recording_names.csv` and only change what the window shows.
-
-| Tab | What you can do |
-|---|---|
-| *Recordings* | Play the recording's input video, with the motif and community of the frame shown under it. *Find* a motif or community and jump from one bout of it to the next |
-| *Motifs & communities* | VAME's motif tree (motif circles sized by time spent) next to the UMAP of the latent space. Choose the integer at which to cut the tree (the box, or click the tree at that height): the communities it makes are shown at once. *Apply this cut* saves it as *Community cut tree* and runs `communities`. Click the map to see that moment of the recording |
-| *Communities & clips* | Each community and its motifs, with the share of the selected recording's time in each. Select a motif to play its clip (from `videos`). Name the communities and *Save names*: writes `community_labels.csv` and a `<recording>_motifs_labeled.csv` per recording |
-| *GIF* | Make a `vame.gif` for a recording (runs `gif`), and play the GIFs made |
-| *Model* | The line at the top: the experiment's name and the settings its model was made with (in red if the experiment file now differs). How well the trained model does on test data it never saw in training: the data (solid) and the model's output (dashed) for random time windows, browsed with ◀ ▶. Left, its *reconstruction* of the window; right, its *prediction* of the frames after it. Above the suggestions, the share of variance each one explains (1 = perfect). *Evaluate the model* runs `evaluate` |
-
-The *Model* tab's suggestions come from those scores and from comparing them with the
-training data:
-
-| What the scores show | Suggestion |
-|---|---|
-| Good reconstruction, poor prediction | Overfitted: the model memorises each window instead of learning how the movement goes on. Fewer `zdims`, or better data (exclude poorly tracked body parts, raise the minimum confidence), then retrain |
-| Much better on training data than on test data | Overfitted: fewer `zdims`, or more recordings, then retrain |
-| Poor reconstruction | Underfit or noisy data: `train-more` if the loss was still going down; otherwise check the tracking, or more `zdims` |
-| Fair reconstruction | `train-more` often helps |
-| None of the above | Go on with `segment` |
-
-The map is computed once by `umap` (*Make the motif map*), and again after retraining.
-Names are kept with the motifs of each community, so a name stays with its group when a
-new cut renumbers the communities, and is dropped if that group is split.
-
-**Changing settings later** works as in the terminal: a new number of motifs or method,
-just *Run all* again; a change in the *Advanced* tab, alignment, exclusions or minimum
-confidence, tick *Force* and *Run all* (the model is retrained), or *Duplicate…* first to
-keep the old model.
-
-The window only runs `Motivan <command> -c experiment.yaml` for you, so results, run
-records and exit codes are identical to the terminal, and an `experiment.yaml` saved
-from the window can be used directly with the CLI (for example on the cluster).
-It needs a desktop: on a Slurm cluster, use the commands below.
-
 ### On a Slurm cluster (e.g. Pedraforca)
 
-Everything runs on the server; no GUI step is involved. Submit the slow command as a job:
+Everything runs on the server. Submit the slow command as a job:
 
 ```bash
 sbatch --gres=gpu:1 --wrap "conda run -n vame Motivan run -c /path/to/experiment.yaml"
@@ -280,10 +169,10 @@ outputs/
 │   └── hmm/                         (and/or kmeans/)
 │       ├── <recording>_motifs.csv   frame, time_s, motif
 │       ├── motif_usage.csv          share of time in each motif, one row per recording
-│       ├── community_labels.csv     community, label, motifs   (after 'Save names')
+│       ├── community_labels.csv     community, label, motifs   (after naming the communities)
 │       └── <recording>_motifs_labeled.csv   frame, time_s, motif, community, label
 ├── gifs/<recording>_<algorithm>_<label>_<start>-<end>.gif   (after 'gif')
-├── recording_names.csv              names given with 'Rename…' in the window
+├── recording_names.csv              names given to the recordings
 ├── runs/<date>_<command>/           experiment.yaml copy, versions.txt, run.log
 └── vame_project/                    VAME's own project (model, logs, plots in model/evaluate/)
     ├── model_settings.yaml          the settings 'prepare' used (+ more_epochs of each train-more)
@@ -343,15 +232,14 @@ that produced it.
 ```
 src/vame_motifs/
 ├── cli.py          commands: parse arguments, call functions, print, exit codes
-├── gui.py          window: edits the experiment YAML, runs the cli.py commands
 ├── config.py       load_config()   experiment YAML -> ExperimentConfig
-├── io.py           read_dlc_csv()  DLC CSV -> PoseFile
-├── validation.py   validate()      checks before any VAME step (uses config.py + io.py)
+├── pose_io.py      read_dlc_csv()  DLC CSV -> PoseFile
+├── validation.py   validate()      checks before any VAME step (uses config.py + pose_io.py)
 ├── pipeline.py     VamePipeline    the VAME steps (vame-py 0.14.4)
 ├── export.py       export_motifs() labels -> motif CSVs + usage summary; run records
 ├── evaluation.py   scores()        the model's reconstruction/prediction -> scores + suggestions
 ├── communities.py  cut_tree()      VAME's motif tree -> communities; names -> *_labeled.csv
-└── viewer.py       Explorer        the 'Explore results' window (videos, tree, map, names, GIFs)
+└── results.py      Results         reads what the commands produced (motifs per frame, usage, map, clips)
 ```
 
 Only `cli.py` prints. The other modules return data or raise one of four errors

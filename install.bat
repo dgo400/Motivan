@@ -1,14 +1,13 @@
 @echo off
 rem Installs Motivan on Windows with a double click: finds conda, creates the
-rem 'vame' environment if needed, installs this folder into it and adds a desktop
-rem shortcut to the window. Run it again to update after pulling new code.
+rem 'vame' environment if needed and installs this folder into it.
+rem Run it again to update after pulling new code.
 rem   install.bat        normal install
 rem   install.bat dev    editable install with the test tools (pytest, ruff)
 setlocal
 
 set "ENV_NAME=vame"
 set "PYTHON_VERSION=3.12"
-set "SHORTCUT_NAME=VAME motifs"
 set "REPO_DIR=%~dp0"
 
 echo.
@@ -65,22 +64,8 @@ set "PIP_RESULT=%ERRORLEVEL%"
 popd
 if not "%PIP_RESULT%"=="0" goto fail
 
-rem 4. desktop shortcut: pythonw starts the window without a console
-echo.
-echo Creating the desktop shortcut '%SHORTCUT_NAME%'...
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-    "$desktop = [Environment]::GetFolderPath('Desktop');" ^
-    "$shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $desktop '%SHORTCUT_NAME%.lnk'));" ^
-    "$shortcut.TargetPath = '%ENV_PREFIX%\pythonw.exe';" ^
-    "$shortcut.Arguments = '-m vame_motifs.gui';" ^
-    "$shortcut.WorkingDirectory = $env:USERPROFILE;" ^
-    "$shortcut.IconLocation = '%ENV_PREFIX%\pythonw.exe,0';" ^
-    "$shortcut.Save()"
-if errorlevel 1 echo Warning: the shortcut could not be created; start the window with start-gui.bat instead.
-
 echo.
 echo === Done ===
-echo Open the window with the '%SHORTCUT_NAME%' icon on the desktop, or with start-gui.bat.
 echo From a terminal: conda activate %ENV_NAME% ^&^& Motivan --help
 echo.
 pause

@@ -11,20 +11,20 @@ requires-python = ">=3.12"
 license = "GPL-3.0-or-later"
 authors = [{ name = "David García Ortiz", email = "davidgarciaortiz@ub.edu" }]
 dependencies = [
+    "fastapi>=0.162.0",
     "numpy",
     "pandas",
+    "python-multipart>=0.0.33",
     "pyyaml",
+    "uvicorn[standard]>=0.54.0",
+    "vame-py==0.14.4",  # exact: the wrapper is written against this VAME API
 ]
 
 [project.optional-dependencies]
 dev = ["pytest", "ruff==0.16.10"]  # exact: each ruff release changes its default rules
-vame = ["vame-py==0.14.4"]  # exact: the wrapper is written against this VAME API
 
 [project.scripts]
 Motivan = "vame_motifs.cli:main"
-
-[project.gui-scripts]
-Motivan-gui = "vame_motifs.gui:main"
 
 [tool.setuptools.dynamic]
 version = { attr = "vame_motifs.__version__" }

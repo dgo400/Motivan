@@ -4,12 +4,6 @@ This module only parses arguments, calls functions from the other modules,
 prints results and returns exit codes. The logic lives elsewhere so tests and
 notebooks can call it directly.
 
-Typical use::
-
-    Motivan validate -c experiment.yaml     # seconds: check the CSVs and the YAML
-    Motivan run      -c experiment.yaml     # everything: prepare, train, segment, export, communities, videos
-    Motivan gif      -c experiment.yaml --session rat01 --length 300
-
 Exit codes: 0 success, 1 a problem with the input or a missing step
 (short message, no traceback), 2 wrong command-line arguments.
 """
