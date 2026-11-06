@@ -14,11 +14,11 @@ dependencies = [
     "numpy",
     "pandas",
     "pyyaml",
+    "vame-py==0.14.4",  # exact: the wrapper is written against this VAME API
 ]
 
 [project.optional-dependencies]
 dev = ["pytest", "ruff==0.16.10"]  # exact: each ruff release changes its default rules
-vame = ["vame-py==0.14.4"]  # exact: the wrapper is written against this VAME API
 
 [project.scripts]
 Motivan = "vame_motifs.cli:main"

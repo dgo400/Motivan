@@ -21,31 +21,36 @@ pose .csv files ──▶ validate ──▶ prepare ──▶ train ──▶ s
 ## 1. Install
 
 Both ways below install `vame-py==0.14.4`, the exact VAME version the code is written
-against, into a conda environment called `vame`. VAME picks the device by itself: CUDA GPU
-if present, then Apple MPS, then CPU.
+against, into a conda environment called `vame`. Training always uses the GPU when there is
+one: VAME picks a CUDA GPU if present, then Apple MPS, then the CPU. `Motivan status -c
+experiment.yaml` shows which one, and every run record (`outputs/runs/.../versions.txt`)
+notes the device it used.
 
 ### On Windows: `install.bat`
 
 1. Install [Miniconda](https://www.anaconda.com/download/success) if you don't have conda yet
    (Anaconda or Miniforge work too).
-2. Get this repository: `git clone <repo-url> motif-gui`, or on GitHub *Code → Download ZIP*
+2. Get this repository: `git clone <repo-url> Motivan`, or on GitHub *Code → Download ZIP*
    and unzip it.
-3. Double-click **`install.bat`** in the `motif-gui` folder.
+3. Double-click **`install.bat`** in the `Motivan` folder.
 
 The installer finds conda, creates the `vame` environment with Python 3.12 (only if it
-does not exist yet), installs the package into it and puts a **VAME motifs** shortcut on
+does not exist yet), installs the package into it and puts a **Motivan** shortcut on
 the desktop that opens the window. The first install downloads VAME and PyTorch, so it
 takes several minutes. If something fails, the console stays open with the error.
 
 | To… | Do this |
 |---|---|
-| Open the window | Double-click the **VAME motifs** desktop shortcut, or `start-gui.bat` |
+| Open the window | Double-click the **Motivan** desktop shortcut, or `start-gui.bat` |
 | Update after new code (`git pull` or a new ZIP) | Double-click `install.bat` again: the environment is reused |
 | Use the commands in a terminal | Open *Anaconda Prompt*, then `conda activate vame` and `Motivan --help` |
-| Develop (editable install + pytest, ruff) | In a terminal in `motif-gui`: `install.bat dev` |
+| Develop (editable install + pytest, ruff) | In a terminal in `Motivan`: `install.bat dev` |
 
-On Windows, pip installs the CPU-only build of PyTorch. That is enough for the window and
-for every step except `train`; training on a PC without a GPU will be slow.
+**GPU.** On Windows, pip's own PyTorch is CPU-only, so `install.bat` checks for an NVIDIA
+GPU (`nvidia-smi`, which comes with the NVIDIA driver) and, if there is one, installs
+PyTorch with CUDA instead. At the end it prints the training device. Without a GPU,
+every step works but `train` will be slow. Installed a GPU or its driver later? Run
+`install.bat` again. On Linux, pip's PyTorch already includes CUDA.
 
 ### On macOS, Linux or a server: by hand
 
@@ -54,8 +59,8 @@ Python 3.12 or newer. Use a dedicated environment (not conda's `base`):
 ```bash
 conda create -n vame python=3.12
 conda activate vame
-git clone <repo-url> motif-gui
-cd motif-gui
+git clone <repo-url> Motivan
+cd Motivan
 python -m pip install .            # or: python -m pip install -e ".[dev]" to develop
 Motivan --help
 ```
@@ -157,7 +162,7 @@ command safe to use in scripts and Slurm jobs.
 
 Everything above can also be done from a window, without the terminal or editing YAML by hand.
 It is installed with the package. On Windows, after `install.bat`, open it with the
-**VAME motifs** desktop shortcut or `start-gui.bat` (`start-gui.bat experiment.yaml` opens
+**Motivan** desktop shortcut or `start-gui.bat` (`start-gui.bat experiment.yaml` opens
 that file). From a terminal:
 
 ```bash
@@ -166,7 +171,7 @@ Motivan-gui                    # empty form
 Motivan-gui experiment.yaml    # or open an existing experiment file
 ```
 
-(`python -m vame_motifs.gui` works too.) The window uses Tkinter, which comes with
+The window uses Tkinter, which comes with
 conda's Python; with a Homebrew Python on macOS you may need `brew install python-tk`.
 
 The window has three parts: the experiment form (left), the commands (right) and their
@@ -340,13 +345,16 @@ that produced it.
 
 ## 6. Code layout
 
+The application is Motivan; `src/vame_motifs/` holds the source code of its VAME
+workflow (other workflows can be added next to it later):
+
 ```
 src/vame_motifs/
-├── cli.py          commands: parse arguments, call functions, print, exit codes
-├── gui.py          window: edits the experiment YAML, runs the cli.py commands
+├── cli.py          the Motivan command: parse arguments, call functions, print, exit codes
+├── gui.py          the Motivan-gui window: edits the experiment YAML, runs the cli.py commands
 ├── config.py       load_config()   experiment YAML -> ExperimentConfig
-├── io.py           read_dlc_csv()  DLC CSV -> PoseFile
-├── validation.py   validate()      checks before any VAME step (uses config.py + io.py)
+├── pose_io.py      read_dlc_csv()  DLC CSV -> PoseFile
+├── validation.py   validate()      checks before any VAME step (uses config.py + pose_io.py)
 ├── pipeline.py     VamePipeline    the VAME steps (vame-py 0.14.4)
 ├── export.py       export_motifs() labels -> motif CSVs + usage summary; run records
 ├── evaluation.py   scores()        the model's reconstruction/prediction -> scores + suggestions

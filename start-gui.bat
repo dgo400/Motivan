@@ -21,11 +21,11 @@ set "PREFIX_FILE=%TEMP%\Motivan-prefix.txt"
 "%CONDA_EXE%" run -n %ENV_NAME% python -c "import sys; print(sys.prefix)" > "%PREFIX_FILE%"
 set /p ENV_PREFIX=<"%PREFIX_FILE%"
 del "%PREFIX_FILE%" >nul 2>&1
-if not exist "%ENV_PREFIX%\pythonw.exe" (
-    echo Error: the '%ENV_NAME%' environment was not found. Run install.bat first.
+if not exist "%ENV_PREFIX%\Scripts\Motivan-gui.exe" (
+    echo Error: Motivan was not found in the '%ENV_NAME%' environment. Run install.bat first.
     pause
     exit /b 1
 )
 
 rem 'start' returns at once, so this console closes and only the window stays open
-start "" "%ENV_PREFIX%\pythonw.exe" -m vame_motifs.gui %*
+start "" "%ENV_PREFIX%\Scripts\Motivan-gui.exe" %*
